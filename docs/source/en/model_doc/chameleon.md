@@ -122,24 +122,12 @@ prompts = [
 
 # We can simply feed images in the order they have to be used in the text prompt
 # Each "<image>" token uses one image leaving the next for the subsequent "<image>" tokens
-<<<<<<< HEAD
-inputs = processor(text=prompts, images=[image_stop, image_cats, image_snowman], padding=True, return_tensors="pt").to(device="cuda", dtype=torch.bfloat16)
-||||||| parent of dba8d0865e... rm unnecessary return_for_text_completion
 inputs = processor(
     text=prompts,
     images=[image_stop, image_cats, image_snowman],
     padding=True,
     return_tensors="pt",
-    return_for_text_completion=True,
-).to(device="cuda", dtype=torch.float16)
-=======
-inputs = processor(
-    text=prompts,
-    images=[image_stop, image_cats, image_snowman],
-    padding=True,
-    return_tensors="pt",
-).to(device="cuda", dtype=torch.float16)
->>>>>>> dba8d0865e... rm unnecessary return_for_text_completion
+).to(device="cuda", dtype=torch.bfloat16)
 
 # Generate
 generate_ids = model.generate(**inputs, max_new_tokens=50)
