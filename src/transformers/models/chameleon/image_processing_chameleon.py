@@ -210,7 +210,8 @@ class ChameleonImageProcessor(BaseImageProcessor):
         return_tensors: Optional[Union[str, TensorType]] = None,
         data_format: Optional[ChannelDimension] = ChannelDimension.FIRST,
         input_data_format: Optional[Union[str, ChannelDimension]] = None,
-    ) -> PIL.Image.Image:
+        **kwargs,
+    ) -> BatchFeature:
         """
         Preprocess an image or batch of images.
 
@@ -370,7 +371,7 @@ class ChameleonImageProcessor(BaseImageProcessor):
         img_rgb = (1 - alpha[:, :, np.newaxis]) * 255 + alpha[:, :, np.newaxis] * img_rgba[:, :, :3]
         return PIL.Image.fromarray(img_rgb.astype("uint8"), "RGB")
 
-    def postprocess_pixel_values(
+    def postprocess(
         self,
         pixel_values: np.ndarray,
         do_rescale: bool = None,
