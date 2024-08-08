@@ -374,13 +374,13 @@ class ChameleonImageProcessor(BaseImageProcessor):
 
     def postprocess(
         self,
-        pixel_values: torch.Tensor,
+        pixel_values: "torch.Tensor",
         do_rescale: Optional[bool] = None,
         rescale_factor: Optional[float] = None,
         do_unnormalize: Optional[bool] = None,
         image_mean: Optional[Union[float, List[float]]] = None,
         image_std: Optional[Union[float, List[float]]] = None,
-    ) -> torch.Tensor:
+    ) -> "torch.Tensor":
         """
         Postprocess a batch of pixel values to images.
 
@@ -418,10 +418,10 @@ class ChameleonImageProcessor(BaseImageProcessor):
 
     def unnormalize(
         self,
-        pixel_values: torch.Tensor,
+        pixel_values: "torch.Tensor",
         mean: Union[float, Iterable[float]],
         std: Union[float, Iterable[float]],
-    ) -> torch.Tensor:
+    ) -> "torch.Tensor":
         """
         Unnormalizes `pixel_values` using the mean and standard deviation specified by `mean` and `std`.
 
