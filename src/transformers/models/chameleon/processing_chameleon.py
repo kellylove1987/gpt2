@@ -24,11 +24,7 @@ from ...feature_extraction_utils import BatchFeature
 from ...image_utils import ImageInput
 from ...processing_utils import ProcessorMixin
 from ...tokenization_utils_base import PaddingStrategy, PreTokenizedInput, TextInput, TruncationStrategy
-from ...utils import TensorType, is_vision_available
-
-
-if is_vision_available():
-    import PIL
+from ...utils import TensorType
 
 
 class ChameleonProcessor(ProcessorMixin):
@@ -167,15 +163,16 @@ class ChameleonProcessor(ProcessorMixin):
         image_processor_input_names = self.image_processor.model_input_names
         return list(dict.fromkeys(tokenizer_input_names + image_processor_input_names))
 
-    def postprocess_pixel_values(self, pixel_values: torch.FloatTensor) -> torch.IntTensor:
+    def postprocess_pixel_values(self, pixel_values: torch.FloatTensor) -> torch.Tensor:
         """
         Postprocess a batch of pixel values to images.
 
         Args:
-            pixel_values (`np.ndarray` of shape `(batch_size, num_channels, image_size, image_size)`):
-                Batch of pixel values to postprocess in CHW format.
+            pixel_values (`np.ndarray` of shape `(batch_size, num_channels, image_size, image_size)` or `(num_channels, image_size, image_size)`):
+                A batch or a single tensor of pixel values to postprocess.
 
         Returns:
-            List[PIL.Image.Image]: A list of PIL images.
+            `torch.Tensor` of shape `(batch_size, num_channels, image_size, image_size)`:
+                The postprocessed images.
         """
         return self.image_processor.postprocess(pixel_values)

@@ -17,20 +17,17 @@
 from typing import Dict, Iterable, List, Optional, Union
 
 import numpy as np
-import torch
 
 from ...image_processing_utils import BaseImageProcessor, BatchFeature, get_size_dict
 from ...image_transforms import (
     get_resize_output_image_size,
     resize,
     to_channel_dimension_format,
-    to_pil_image,
 )
 from ...image_utils import (
     ChannelDimension,
     ImageInput,
     PILImageResampling,
-    get_channel_dimension_axis,
     infer_channel_dimension_format,
     is_scaled_image,
     is_valid_image,
@@ -38,11 +35,13 @@ from ...image_utils import (
     valid_images,
     validate_preprocess_arguments,
 )
-from ...utils import TensorType, filter_out_non_signature_kwargs, is_vision_available, logging
+from ...utils import TensorType, filter_out_non_signature_kwargs, is_torch_available, is_vision_available, logging
 
 
 logger = logging.get_logger(__name__)
 
+if is_torch_available():
+    import torch
 if is_vision_available():
     import PIL
 
