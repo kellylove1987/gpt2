@@ -182,9 +182,7 @@ response_ids = generate_ids[:, inputs["input_ids"].shape[-1]:]
 
 # Decode the generated image tokens
 pixel_values = model.decode_image_tokens(response_ids[:, 1:-1])
-images = processor.postprocess_pixel_values(
-    pixel_values.float().detach().cpu().numpy()
-)
+images = processor.postprocess_pixel_values(pixel_values)
 
 # Save the image
 images[0].save("snowman.png")
@@ -237,9 +235,7 @@ response_ids = generate_ids[:, inputs["input_ids"].shape[-1]:]
 
 # Decode the generated image tokens
 pixel_values = model.decode_image_tokens(response_ids[:, 1:-1])
-images = processor.postprocess_pixel_values(
-    pixel_values.float().detach().cpu().numpy()
-)
+images = processor.postprocess_pixel_values(pixel_values)
 
 # Save the image
 images[0].save("snowman.png")

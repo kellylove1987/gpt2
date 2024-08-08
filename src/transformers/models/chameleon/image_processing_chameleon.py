@@ -17,6 +17,7 @@
 from typing import Dict, Iterable, List, Optional, Union
 
 import numpy as np
+import torch
 
 from ...image_processing_utils import BaseImageProcessor, BatchFeature, get_size_dict
 from ...image_transforms import (
@@ -374,20 +375,19 @@ class ChameleonImageProcessor(BaseImageProcessor):
 
     def postprocess(
         self,
-        pixel_values: np.ndarray,
-        do_rescale: bool = None,
-        rescale_factor: float = None,
-        do_unnormalize: bool = None,
+        pixel_values: torch.Tensor,
+        do_rescale: Optional[bool] = None,
+        rescale_factor: Optional[float] = None,
+        do_unnormalize: Optional[bool] = None,
         image_mean: Optional[Union[float, List[float]]] = None,
         image_std: Optional[Union[float, List[float]]] = None,
-        input_data_format: Optional[Union[str, ChannelDimension]] = None,
-    ) -> List[PIL.Image.Image]:
+    ) -> torch.Tensor:
         """
         Postprocess a batch of pixel values to images.
 
         Args:
-            pixel_values (`np.ndarray` of shape `(batch_size, num_channels, image_size, image_size)`):
-                Batch of pixel values to postprocess in CHW format.
+            pixel_values (`torch.Tensor` of shape `(batch_size, num_channels, image_size, image_size)` or `(num_channels, image_size, image_size)`):
+                A batch or single tensor of pixel values to postprocess.
             do_rescale (`bool`, *optional*, defaults to `self.do_rescale`):
                 Whether to rescale the image.
             rescale_factor (`float`, *optional*, defaults to `self.rescale_factor`):
@@ -399,100 +399,64 @@ class ChameleonImageProcessor(BaseImageProcessor):
             image_std (`float` or `List[float]`, *optional*, defaults to `self.image_std`):
                 Image standard deviation to use for unnormalization. Only has an effect if `do_unnormalize` is set to
                 `True`.
-            input_data_format (`ChannelDimension` or `str`, *optional*):
-                The channel dimension format for the input image. If unset, the channel dimension format is inferred
-                from the input image. Can be one of:
-                - `"channels_first"` or `ChannelDimension.FIRST`: image in (num_channels, height, width) format.
-                - `"channels_last"` or `ChannelDimension.LAST`: image in (height, width, num_channels) format.
-                - `"none"` or `ChannelDimension.NONE`: image in (height, width) format.
 
         Returns:
-            List[PIL.Image.Image]: A list of PIL images.
+            `torch.Tensor`: A batch or a single tensor of pixel values.
         """
         do_rescale = do_rescale if do_rescale is not None else self.do_rescale
-        rescale_factor = rescale_factor if rescale_factor is not None else 1.0 / self.rescale_factor
+        rescale_factor = 1.0 / self.rescale_factor if rescale_factor is None else rescale_factor
         do_unnormalize = do_unnormalize if do_unnormalize is not None else self.do_normalize
         image_mean = image_mean if image_mean is not None else self.image_mean
         image_std = image_std if image_std is not None else self.image_std
-        if input_data_format is None:
-            # We assume that all images have the same channel dimension format.
-            input_data_format = infer_channel_dimension_format(pixel_values[0])
 
         if do_unnormalize:
-            pixel_values = np.asarray(
-                [
-                    self.unnormalize(
-                        pixel_values_, mean=image_mean, std=image_std, input_data_format=input_data_format
-                    )
-                    for pixel_values_ in pixel_values
-                ]
-            )
+            pixel_values = self.unnormalize(pixel_values, mean=image_mean, std=image_std)
 
         if do_rescale:
-            pixel_values = self.rescale(pixel_values, scale=rescale_factor, input_data_format=input_data_format)
+            pixel_values *= rescale_factor
 
-        images = np.clip(pixel_values, 0, 255).astype(np.uint8)
-        return [to_pil_image(image, input_data_format=input_data_format) for image in images]
+        return torch.clip(pixel_values, 0, 255).to(dtype=torch.uint8)
 
     def unnormalize(
         self,
-        image: np.ndarray,
+        pixel_values: torch.Tensor,
         mean: Union[float, Iterable[float]],
         std: Union[float, Iterable[float]],
-        data_format: Optional[ChannelDimension] = None,
-        input_data_format: Optional[Union[str, ChannelDimension]] = None,
-    ) -> np.ndarray:
+    ) -> torch.Tensor:
         """
-        Unnormalizes `image` using the mean and standard deviation specified by `mean` and `std`.
+        Unnormalizes `pixel_values` using the mean and standard deviation specified by `mean` and `std`.
 
-        image = (image * std) + mean
+        pixel_values = (pixel_values * std) + mean
 
         Args:
-            image (`np.ndarray`):
-                The image to normalize.
+            pixel_values (`torch.Tensor` of shape `(batch_size, num_channels, image_size, image_size)` or `(num_channels, image_size, image_size)`):
+                Batch of pixel values to postprocess.
             mean (`float` or `Iterable[float]`):
                 The mean to use for unnormalization.
             std (`float` or `Iterable[float]`):
                 The standard deviation to use for unnormalization.
             data_format (`ChannelDimension`, *optional*):
                 The channel dimension format of the output image. If unset, will use the inferred format from the input.
-            input_data_format (`ChannelDimension`, *optional*):
-                The channel dimension format of the input image. If unset, will use the inferred format from the input.
         """
-        if not isinstance(image, np.ndarray):
-            raise ValueError("image must be a numpy array")
-
-        if input_data_format is None:
-            input_data_format = infer_channel_dimension_format(image)
-
-        channel_axis = get_channel_dimension_axis(image, input_data_format=input_data_format)
-        num_channels = image.shape[channel_axis]
-
-        # We cast to float32 to avoid errors that can occur when subtracting uint8 values.
-        # We preserve the original dtype if it is a float type to prevent upcasting float16.
-        if not np.issubdtype(image.dtype, np.floating):
-            image = image.astype(np.float32)
+        channel_axis = 1 if pixel_values.ndim == 4 else 0
+        num_channels = pixel_values.shape[channel_axis]
 
         if isinstance(mean, Iterable):
             if len(mean) != num_channels:
                 raise ValueError(f"mean must have {num_channels} elements if it is an iterable, got {len(mean)}")
         else:
             mean = [mean] * num_channels
-        mean = np.array(mean, dtype=image.dtype)
+        mean = torch.tensor(mean, dtype=pixel_values.dtype, device=pixel_values.device)
 
         if isinstance(std, Iterable):
             if len(std) != num_channels:
                 raise ValueError(f"std must have {num_channels} elements if it is an iterable, got {len(std)}")
         else:
             std = [std] * num_channels
-        std = np.array(std, dtype=image.dtype)
+        std = torch.tensor(std, dtype=pixel_values.dtype, device=pixel_values.device)
 
-        if input_data_format == ChannelDimension.LAST:
-            image = (image * std) + mean
+        if pixel_values.ndim == 4:
+            pixel_values = (pixel_values * std.view(1, -1, 1, 1)) + mean.view(1, -1, 1, 1)
         else:
-            image = ((image.T * std) + mean).T
-
-        image = (
-            to_channel_dimension_format(image, data_format, input_data_format) if data_format is not None else image
-        )
-        return image
+            pixel_values = (pixel_values * std.view(-1, 1, 1)) + mean.view(-1, 1, 1)
+        return pixel_values

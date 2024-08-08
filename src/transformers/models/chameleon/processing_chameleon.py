@@ -18,7 +18,7 @@ Processor class for Chameleon.
 
 from typing import List, Optional, Union
 
-import numpy as np
+import torch
 
 from ...feature_extraction_utils import BatchFeature
 from ...image_utils import ImageInput
@@ -167,7 +167,7 @@ class ChameleonProcessor(ProcessorMixin):
         image_processor_input_names = self.image_processor.model_input_names
         return list(dict.fromkeys(tokenizer_input_names + image_processor_input_names))
 
-    def postprocess_pixel_values(self, pixel_values: np.ndarray) -> List[PIL.Image.Image]:
+    def postprocess_pixel_values(self, pixel_values: torch.FloatTensor) -> torch.IntTensor:
         """
         Postprocess a batch of pixel values to images.
 
