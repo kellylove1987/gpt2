@@ -50,12 +50,17 @@ The original code can be found [here](https://github.com/facebookresearch/chamel
 
 - We advise users to use `padding_side="left"` when computing batched generation as it leads to more accurate results. Simply make sure to set `processor.tokenizer.padding_side = "left"` before generating.
 
+- When generating images, we advice users to load the model in `bfloat16` for better results. Simply make sure to set `torch_dtype=torch.bfloat16` when loading the model.
+
 - Note that Chameleon was tuned for safety alignment. If the model is refusing to answer, consider asking a more concrete question, instead of an open question.
 
 - Chameleon generates in chat format which means that the generated text will always be the "assistant's turn". You can enable a text completion generation by passing `return_for_text_completion=True` when calling the processor.
 
 > [!NOTE]
 > Chameleon implementation in Transformers uses a special image token to indicate where to merge image embeddings. For special image token we didn't add a new one but used one of the reserved tokens: `<reserved08707>`. You have to add `<image>` to your prompt in the place where the image should be embedded for correct generation.
+
+> [!NOTE]
+> The official model checkpoint currently only supports text generation. To generate images and interleaved text-image responses, you can use finetuned versions such as [Anole](https://arxiv.org/abs/2407.06135). Note however that Anole has a bias for "empty" or background patches, so it is recommended to use sampling when generating images (i.e. setting `do_sample=True` during generation) to reduce the likelihood of generating a blank image.
 
 ## Usage example
 
@@ -78,7 +83,12 @@ url = 'http://images.cocodataset.org/val2017/000000039769.jpg'
 image = Image.open(requests.get(url, stream=True).raw)
 prompt = "What do you see in this image?<image>"
 
-inputs = processor(prompt, image, return_tensors="pt").to(model.device)
+inputs = processor(
+    prompt,
+    image,
+    return_tensors="pt",
+    return_for_text_completion=True,
+).to(model.device)
 
 # autoregressively complete prompt
 output = model.generate(**inputs, max_new_tokens=50)
@@ -129,19 +139,26 @@ processor.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokeniza
 Chameleon can also generate images. However, the official model checkpoint currently only supports text generation. We need to use finetuned versions such as [Anole](https://arxiv.org/abs/2407.06135) to do image generation. Here is how you can do it:
 
 ```python
+import torch
 from transformers import ChameleonProcessor, ChameleonForConditionalGeneration
 
 processor = ChameleonProcessor.from_pretrained("leloy/Anole-7b-v0.1-hf")
 model = ChameleonForConditionalGeneration.from_pretrained(
     "leloy/Anole-7b-v0.1-hf",
     device_map="auto",
+    torch_dtype=torch.bfloat16,
 )
 
 # Prepare a prompt
 prompt = "Generate an image of a snowman."
 
 # Preprocess the prompt
-inputs = processor(prompt, return_tensors="pt", padding=True).to(model.device)
+inputs = processor(
+    prompt,
+    padding=True,
+    return_tensors="pt",
+    return_for_text_completion=True,
+).to(model.device)
 
 # Generate discrete image tokens
 generate_ids = model.generate(
@@ -171,14 +188,16 @@ images[0].save("snowman.png")
 We can also interleave text and images in the prompt to generate images. Here is how you can do it:
 
 ```python
+import requests
+import torch
 from transformers import ChameleonProcessor, ChameleonForConditionalGeneration
 from PIL import Image
-import requests
 
 processor = ChameleonProcessor.from_pretrained("leloy/Anole-7b-v0.1-hf")
 model = ChameleonForConditionalGeneration.from_pretrained(
     "leloy/Anole-7b-v0.1-hf",
     device_map="auto",
+    torch_dtype=torch.bfloat16,
 )
 
 # Get image of a snowman
@@ -189,7 +208,13 @@ image_snowman = Image.open(requests.get(url, stream=True).raw)
 prompt = "Generate a variation of this image.<image>"
 
 # Preprocess the prompt
-inputs = processor(prompt, images=[image_snowman], return_tensors="pt", padding=True).to(model.device)
+inputs = processor(
+    prompt,
+    images=[image_snowman],
+    padding=True,
+    return_tensors="pt",
+    return_for_text_completion=True,
+).to(model.device)
 
 # Generate discrete image tokens
 generate_ids = model.generate(
@@ -219,19 +244,26 @@ images[0].save("snowman.png")
 We can also generate interleaved text and images in the output. Here is how you can do it:
 
 ```python
+import torch
 from transformers import ChameleonProcessor, ChameleonForConditionalGeneration
 
 processor = ChameleonProcessor.from_pretrained("leloy/Anole-7b-v0.1-hf")
 model = ChameleonForConditionalGeneration.from_pretrained(
     "leloy/Anole-7b-v0.1-hf",
     device_map="auto",
+    torch_dtype=torch.bfloat16,
 )
 
 # Prepare a prompt
 prompt = "Can you draw a snowman and explain how to build one?"
 
 # Preprocess the prompt
-inputs = processor(prompt, return_tensors="pt", padding=True).to(model.device)
+inputs = processor(
+    prompt,
+    padding=True,
+    return_tensors="pt",
+    return_for_text_completion=True,
+).to(model.device)
 
 # Generate interleaved text and discrete image tokens
 generate_ids = model.generate(
