@@ -371,6 +371,7 @@ class Qwen2FlashAttention2(Qwen2Attention):
         if past_key_value is not None:
             # Activate slicing cache only if the config has a value `sliding_windows` attribute
             cache_has_contents = past_key_value.get_seq_length(self.layer_idx) > 0
+            kv_seq_len = key_states.shape[-2] + cache_position[0]
             if (
                 getattr(self.config, "sliding_window", None) is not None
                 and kv_seq_len > self.config.sliding_window
