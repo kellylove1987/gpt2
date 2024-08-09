@@ -182,9 +182,11 @@ We can also interleave text and images in the prompt to generate images. Here is
 
 ```python
 import requests
+
 import torch
-from transformers import ChameleonProcessor, ChameleonForConditionalGeneration
 from PIL import Image
+from transformers import ChameleonProcessor, ChameleonForConditionalGeneration
+from transformers.image_transforms import to_pil_image
 
 processor = ChameleonProcessor.from_pretrained("leloy/Anole-7b-v0.1-hf")
 model = ChameleonForConditionalGeneration.from_pretrained(
@@ -221,12 +223,16 @@ generate_ids = model.generate(
 # Only keep the tokens from the response
 response_ids = generate_ids[:, inputs["input_ids"].shape[-1]:]
 
+# The generated image tokens are wrapped by the `image_start_token` and `image_end_token` tokens. We need to remove them before decoding the image tokens.
+image_token_ids = response_ids[:, 1:-1]
+
 # Decode the generated image tokens
-pixel_values = model.decode_image_tokens(response_ids[:, 1:-1])
-images = processor.postprocess_pixel_values(pixel_values)
+pixel_values = model.decode_image_tokens(image_token_ids)
+pixel_values = processor.postprocess_pixel_values(pixel_values)
 
 # Save the image
-images[0].save("snowman.png")
+image = to_pil_image(pixel_values[0].detach().cpu())
+image.save("snowman.png")
 ```
 
 ### Interleaved text-image generation
