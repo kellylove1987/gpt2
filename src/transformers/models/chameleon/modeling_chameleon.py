@@ -32,8 +32,8 @@ from ...generation.logits_process import (
     AllowOnlyTokensAtRelativeOffsetLogitsProcessor,
     AllowOnlyTokensInRelativeWindowLogitsProcessor,
     LogitsProcessorList,
-    SuppressTokensInIndexRangeLogitsProcessor,
     SuppressTokensAtBeginLogitsProcessor,
+    SuppressTokensInIndexRangeLogitsProcessor,
     SuppressTokensLogitsProcessor,
 )
 from ...generation.utils import GenerateOutput
@@ -1801,10 +1801,7 @@ class ChameleonForConditionalGeneration(ChameleonPreTrainedModel):
             and kwargs.get("max_new_tokens") is None
             and (
                 generation_config is None
-                or (
-                    generation_config.max_length is None
-                    and generation_config.max_new_tokens is None
-                )
+                or (generation_config.max_length is None and generation_config.max_new_tokens is None)
             )
         ):
             kwargs["max_new_tokens"] = self.model.image_seq_length + 2
