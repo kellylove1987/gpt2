@@ -15,6 +15,7 @@
 """PyTorch Chameleon model."""
 
 import math
+import warnings
 from functools import cached_property
 from typing import Dict, Literal, Optional, Tuple, Union
 
@@ -32,6 +33,7 @@ from ...generation.logits_process import (
     AllowOnlyTokensInRelativeWindowLogitsProcessor,
     LogitsProcessorList,
     SuppressTokensInIndexRangeLogitsProcessor,
+    SuppressTokensAtBeginLogitsProcessor,
     SuppressTokensLogitsProcessor,
 )
 from ...generation.utils import GenerateOutput
@@ -1850,6 +1852,16 @@ class ChameleonForConditionalGeneration(ChameleonPreTrainedModel):
                 )
             )
         elif generation_config.multimodal_generation_mode == "image-only":
+            inferred_max_new_tokens = generation_config.max_length - input_ids_length
+            if inferred_max_new_tokens < self.model.image_seq_length + 2:
+                warnings.warn(
+                    f"The VQVAE decoder expects to receive {self.model.image_seq_length} image tokens to generate an image."
+                    "And Chameleon wraps the image tokens with the `beginning-of-image` and `end-of-image` tokens when on image generation mode."
+                    f"Therefore, the `max_new_tokens` must be at least {self.model.image_seq_length + 2}."
+                    f"However, the inferred `max_new_tokens` from the generation config is only {inferred_max_new_tokens}."
+                    "You would need to pad the output tokens with dummy image tokens before passing them to the VQVAE decoder."
+                    f"To avoid this warning, set `max_new_tokens` to at least {self.model.image_seq_length + 2}."
+                )
             allowed_tokens = self.vocabulary_mapping.image_token_ids + [
                 self.config.eos_token_id,
                 self.vocabulary_mapping.boi_token_id,
@@ -1881,6 +1893,12 @@ class ChameleonForConditionalGeneration(ChameleonPreTrainedModel):
                     ),
                     # Allow only image tokens
                     SuppressTokensLogitsProcessor(suppress_tokens=suppress_tokens, device=self.device),
+                    # Force image generation
+                    SuppressTokensAtBeginLogitsProcessor(
+                        begin_suppress_tokens=[self.config.eos_token_id],
+                        begin_index=input_ids_length,
+                        device=self.device,
+                    ),
                 ]
             )
         elif generation_config.multimodal_generation_mode == "interleaved-text-image":
