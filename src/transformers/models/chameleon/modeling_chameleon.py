@@ -1795,6 +1795,19 @@ class ChameleonForConditionalGeneration(ChameleonPreTrainedModel):
         ] = None,
         **kwargs,
     ):
+        if (
+            multimodal_generation_mode == "image-only"
+            and kwargs.get("max_length") is None
+            and kwargs.get("max_new_tokens") is None
+            and (
+                generation_config is None
+                or (
+                    generation_config.max_length is None
+                    and generation_config.max_new_tokens is None
+                )
+            )
+        ):
+            kwargs["max_new_tokens"] = self.model.image_seq_length + 2
         generation_config, model_kwargs = super()._prepare_generation_config(generation_config, **kwargs)
         if multimodal_generation_mode is not None:
             generation_config.multimodal_generation_mode = multimodal_generation_mode
