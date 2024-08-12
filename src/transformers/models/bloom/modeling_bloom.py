@@ -330,7 +330,6 @@ class BloomAttention(nn.Module):
         value_layer = value_layer.reshape(batch_size * self.num_heads, -1, self.head_dim)
 
         # [batch_size * num_heads, q_length, kv_length]
-        # we use `torch.Tensor.baddbmm` instead of `torch.baddbmm` as the latter isn't supported by TorchScript v1.11
         attention_scores = query_layer @ key_layer.transpose(-1, -2)
         attention_scores *= self.inv_norm_factor
         attention_scores = attention_scores + (alibi * self.beta)

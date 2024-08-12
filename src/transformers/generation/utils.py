@@ -1544,12 +1544,14 @@ class GenerationMixin:
         # Set pad token if unset (and there are conditions to do so)
         if pad_token_tensor is None and eos_token_tensor is not None:
             if kwargs_has_attention_mask is not None and not kwargs_has_attention_mask:
-                logger.warning(
-                    "The attention mask and the pad token id were not set. As a consequence, you may observe "
-                    "unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results."
-                )
+                if not is_torchdynamo_compiling:
+                    logger.warning(
+                        "The attention mask and the pad token id were not set. As a consequence, you may observe "
+                        "unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results."
+                    )
             pad_token_tensor = eos_token_tensor[0]
-            logger.warning(f"Setting `pad_token_id` to `eos_token_id`:{pad_token_tensor} for open-end generation.")
+            if not is_torchdynamo_compiling:
+                logger.warning(f"Setting `pad_token_id` to `eos_token_id`:{pad_token_tensor} for open-end generation.")
 
         # Sanity checks/warnings
         if self.config.is_encoder_decoder and decoder_start_token_tensor is None:
