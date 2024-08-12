@@ -167,6 +167,7 @@ from . import (
     nougat,
     nystromformer,
     olmo,
+    olmoe,
     oneformer,
     openai,
     opt,
