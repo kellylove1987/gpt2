@@ -130,6 +130,7 @@ Check the table below to see whether a model supports PyTorch, TensorFlow, or JA
 |                           [ESM](model_doc/esm)                           |       ✅        |         ✅         |      ❌      |
 |              [FairSeq Machine-Translation](model_doc/fsmt)               |       ✅        |         ❌         |      ❌      |
 |                        [Falcon](model_doc/falcon)                        |       ✅        |         ❌         |      ❌      |
+|                  [FalconMamba](model_doc/falcon_mamba)                   |       ✅        |         ❌         |      ❌      |
 |         [FastSpeech2Conformer](model_doc/fastspeech2_conformer)          |       ✅        |         ❌         |      ❌      |
 |                       [FLAN-T5](model_doc/flan-t5)                       |       ✅        |         ✅         |      ✅      |
 |                      [FLAN-UL2](model_doc/flan-ul2)                      |       ✅        |         ✅         |      ✅      |
@@ -250,6 +251,7 @@ Check the table below to see whether a model supports PyTorch, TensorFlow, or JA
 |                        [PVTv2](model_doc/pvt_v2)                         |       ✅        |         ❌         |      ❌      |
 |                       [QDQBert](model_doc/qdqbert)                       |       ✅        |         ❌         |      ❌      |
 |                         [Qwen2](model_doc/qwen2)                         |       ✅        |         ❌         |      ❌      |
+|                   [Qwen2Audio](model_doc/qwen2_audio)                    |       ✅        |         ❌         |      ❌      |
 |                     [Qwen2MoE](model_doc/qwen2_moe)                      |       ✅        |         ❌         |      ❌      |
 |                           [RAG](model_doc/rag)                           |       ✅        |         ✅         |      ❌      |
 |                         [REALM](model_doc/realm)                         |       ✅        |         ❌         |      ❌      |
