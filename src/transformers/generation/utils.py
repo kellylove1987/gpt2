@@ -1544,7 +1544,7 @@ class GenerationMixin:
         # Set pad token if unset (and there are conditions to do so)
         if pad_token_tensor is None and eos_token_tensor is not None:
             if kwargs_has_attention_mask is not None and not kwargs_has_attention_mask:
-                if not is_torchdynamo_compiling:
+                if not is_torchdynamo_compiling():
                     logger.warning(
                         "The attention mask and the pad token id were not set. As a consequence, you may observe "
                         "unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results."
