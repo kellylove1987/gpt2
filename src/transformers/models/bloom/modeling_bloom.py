@@ -326,18 +326,21 @@ class BloomAttention(nn.Module):
 
         # reshape qkv for further computations
         query_layer = query_layer.reshape(batch_size * self.num_heads, -1, self.head_dim)
-        key_layer = key_layer.reshape(batch_size * self.num_heads, -1, self.head_dim)
+        key_layer = key_layer.reshape(batch_size * self.num_heads, -1, self.head_dim).transpose(-1, -2)
         value_layer = value_layer.reshape(batch_size * self.num_heads, -1, self.head_dim)
 
         # [batch_size * num_heads, q_length, kv_length]
-        attention_scores = query_layer @ key_layer.transpose(-1, -2)
-        attention_scores *= self.inv_norm_factor
-        attention_scores = attention_scores + (alibi * self.beta)
+        attention_scores = alibi.baddbmm(
+            batch1=query_layer,
+            batch2=key_layer,
+            beta=self.beta,
+            alpha=self.inv_norm_factor,
+        )
 
         # change view to [batch_size, num_heads, q_length, kv_length]
         attn_weights = attention_scores.view(batch_size, self.num_heads, q_length, -1)
         if attention_mask is not None:  # no matter the length, we just slice it
-            causal_mask = attention_mask[:, :, :, : key_layer.shape[-2]]
+            causal_mask = attention_mask[:, :, :, : key_layer.shape[-1]]
             attn_weights = attn_weights + causal_mask
 
         # cast attention scores to fp32, compute scaled softmax and cast back to initial dtype

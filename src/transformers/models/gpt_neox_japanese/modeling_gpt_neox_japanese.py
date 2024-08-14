@@ -14,6 +14,7 @@
 # limitations under the License.
 """PyTorch GPTNeoX model."""
 
+import math
 from typing import Optional, Tuple, Union
 
 import torch
@@ -140,7 +141,7 @@ class GPTNeoXJapaneseAttention(nn.Module):
         )
         self.max_positions = config.max_position_embeddings
         self.attention_dropout = nn.Dropout(config.attention_dropout)
-        self.norm_factor = torch.sqrt(torch.tensor(self.head_size, dtype=torch.float32)).to(torch.get_default_dtype())
+        self.norm_factor = math.sqrt(self.head_size)
 
         self.query_key_value = nn.Linear(config.hidden_size, 3 * config.hidden_size, bias=False)
         self.dense = nn.Linear(config.hidden_size, config.hidden_size, bias=False)
@@ -243,9 +244,19 @@ class GPTNeoXJapaneseAttention(nn.Module):
         key = key.view(batch_size * num_attention_heads, key_length, attn_head_size)
 
         # [batch_size * num_heads, q_length, kv_length]
-        attention_scores = query @ key.transpose(-1, -2)
-        attention_scores *= (
-            torch.tensor(1.0, dtype=self.norm_factor.dtype, device=self.norm_factor.device) / self.norm_factor
+        attn_scores = torch.zeros(
+            batch_size * num_attention_heads,
+            query_length,
+            key_length,
+            dtype=query.dtype,
+            device=key.device,
+        )
+        attention_scores = torch.baddbmm(
+            attn_scores,
+            query,
+            key.transpose(1, 2),
+            beta=1.0,
+            alpha=1.0 / self.norm_factor,
         )
 
         attention_scores = attention_scores.view(batch_size, num_attention_heads, query_length, -1)
