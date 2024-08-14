@@ -135,6 +135,8 @@ class GemmaConfig(PretrainedConfig):
         self.rope_theta = rope_theta
         self.attention_bias = attention_bias
         self.attention_dropout = attention_dropout
+        self.cache_implementation = None
+        self.cache_config = None
 
         super().__init__(
             pad_token_id=pad_token_id,

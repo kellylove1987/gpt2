@@ -1002,6 +1002,28 @@ class GemmaForCausalLM(GemmaPreTrainedModel):
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
+        if self.config.cache_implementation == "static":
+            max_batch_size = self.config.cache_config.get("max_batch_size", 1)
+            max_cache_len = self.config.cache_config.get("max_cache_len", 32)
+            device = self.config.cache_config.get("device", "cpu")
+            dtype = self.config.cache_config.get("dtype", torch.float32)
+            self.static_cache = StaticCache(
+                config=config,
+                max_batch_size=max_batch_size,
+                max_cache_len=max_cache_len,
+                device=device,
+                dtype=dtype,
+            )
+            causal_mask = torch.tril(
+                torch.ones(
+                    max_cache_len,
+                    max_cache_len,
+                    dtype=torch.bool,
+                    device=device,
+                )
+            )
+            self.register_buffer("mask", causal_mask, persistent=False)
+
         # Initialize weights and apply final processing
         self.post_init()
 
@@ -1070,6 +1092,14 @@ class GemmaForCausalLM(GemmaPreTrainedModel):
         )
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
+        if self.config.cache_implementation == "static" and self.static_cache is not None:
+            # Static cache config is passed explicitly via `from_pretrained` at model construction time.
+            # `cache_position` can't be None when using static cache.
+            assert cache_position is not None
+            past_key_values = self.static_cache
+            attention_mask = self.mask[cache_position, : input_ids.shape[1]]
+            position_ids = cache_position.unsqueeze(0)
+
         # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
         outputs = self.model(
             input_ids=input_ids,
@@ -1083,6 +1113,10 @@ class GemmaForCausalLM(GemmaPreTrainedModel):
             return_dict=return_dict,
             cache_position=cache_position,
         )
+
+        if self.config.cache_implementation == "static":
+            # Outputs should not include `Cache`` object as `torch.export`` does not support `Cache` type as an output.
+            outputs.past_key_values = None
 
         hidden_states = outputs[0]
         logits = self.lm_head(hidden_states)
