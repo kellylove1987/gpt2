@@ -225,7 +225,6 @@ class WhisperModelTester:
         decoder_start_token_id=85,
         num_conv_layers=1,
         suppress_tokens=None,
-        begin_suppress_tokens=None,
     ):
         self.parent = parent
         self.batch_size = batch_size
@@ -250,7 +249,6 @@ class WhisperModelTester:
         self.decoder_start_token_id = decoder_start_token_id
         self.num_conv_layers = num_conv_layers
         self.suppress_tokens = suppress_tokens
-        self.begin_suppress_tokens = begin_suppress_tokens
 
     def prepare_config_and_inputs(self):
         input_features = floats_tensor([self.batch_size, self.num_mel_bins, self.seq_length], self.vocab_size)
@@ -287,7 +285,6 @@ class WhisperModelTester:
             encoder_ffn_dim=self.hidden_size,
             decoder_start_token_id=self.decoder_start_token_id,
             suppress_tokens=self.suppress_tokens,
-            begin_suppress_tokens=self.begin_suppress_tokens,
         )
 
     def prepare_config_and_inputs_for_common(self):
@@ -3527,7 +3524,6 @@ class WhisperEncoderModelTester:
         num_mel_bins=80,
         num_conv_layers=1,
         suppress_tokens=None,
-        begin_suppress_tokens=None,
         classifier_proj_size=4,
         num_labels=2,
         is_encoder_decoder=False,
@@ -3550,7 +3546,6 @@ class WhisperEncoderModelTester:
         self.max_source_positions = max_source_positions
         self.num_conv_layers = num_conv_layers
         self.suppress_tokens = suppress_tokens
-        self.begin_suppress_tokens = begin_suppress_tokens
         self.classifier_proj_size = classifier_proj_size
         self.num_labels = num_labels
         self.is_encoder_decoder = is_encoder_decoder
@@ -3571,7 +3566,6 @@ class WhisperEncoderModelTester:
             decoder_ffn_dim=self.hidden_size,
             encoder_ffn_dim=self.hidden_size,
             suppress_tokens=self.suppress_tokens,
-            begin_suppress_tokens=self.begin_suppress_tokens,
             classifier_proj_size=self.classifier_proj_size,
             num_labels=self.num_labels,
             is_encoder_decoder=self.is_encoder_decoder,
@@ -3903,7 +3897,6 @@ class WhisperStandaloneDecoderModelTester:
         decoder_start_token_id=85,
         num_conv_layers=1,
         suppress_tokens=None,
-        begin_suppress_tokens=None,
     ):
         self.parent = parent
         self.batch_size = batch_size
@@ -3927,7 +3920,6 @@ class WhisperStandaloneDecoderModelTester:
         self.decoder_start_token_id = decoder_start_token_id
         self.num_conv_layers = num_conv_layers
         self.suppress_tokens = suppress_tokens
-        self.begin_suppress_tokens = begin_suppress_tokens
 
     def prepare_config_and_inputs(self):
         input_features = floats_tensor([self.batch_size, self.num_mel_bins, self.seq_length], self.vocab_size)
@@ -3983,7 +3975,6 @@ class WhisperStandaloneDecoderModelTester:
             encoder_ffn_dim=self.hidden_size,
             decoder_start_token_id=self.decoder_start_token_id,
             suppress_tokens=self.suppress_tokens,
-            begin_suppress_tokens=self.begin_suppress_tokens,
         )
 
     def prepare_config_and_inputs_for_common(self):
