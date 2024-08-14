@@ -2861,7 +2861,7 @@ class GenerationIntegrationTests(unittest.TestCase, GenerationIntegrationTestsMi
     def test_default_max_length_warning(self):
         model = AutoModelForCausalLM.from_pretrained("hf-internal-testing/tiny-random-gpt2").to(torch_device)
         tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-gpt2")
-        model.config.pad_token_id = tokenizer.eos_token_id
+        model.generation_config.pad_token_id = tokenizer.eos_token_id
 
         text = "Hello world"
         tokenized_inputs = tokenizer([text], return_tensors="pt")
@@ -2888,8 +2888,8 @@ class GenerationIntegrationTests(unittest.TestCase, GenerationIntegrationTestsMi
         model = AutoModelForCausalLM.from_pretrained("hf-internal-testing/tiny-random-gpt2").to(torch_device)
         assistant = AutoModelForCausalLM.from_pretrained("hf-internal-testing/tiny-random-gpt2").to(torch_device)
         tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-gpt2")
-        model.config.pad_token_id = tokenizer.eos_token_id
-        assistant.config.pad_token_id = tokenizer.eos_token_id
+        model.generation_config.pad_token_id = tokenizer.eos_token_id
+        assistant.generation_config.pad_token_id = tokenizer.eos_token_id
 
         text = "Hello world"
         tokenized_inputs = tokenizer([text], return_tensors="pt")
@@ -2910,8 +2910,8 @@ class GenerationIntegrationTests(unittest.TestCase, GenerationIntegrationTestsMi
         model = AutoModelForCausalLM.from_pretrained("hf-internal-testing/tiny-random-gpt2").to(torch_device)
         assistant = AutoModelForCausalLM.from_pretrained("hf-internal-testing/tiny-random-gpt2").to(torch_device)
         tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-gpt2")
-        model.config.pad_token_id = tokenizer.eos_token_id
-        assistant.config.pad_token_id = tokenizer.eos_token_id
+        model.generation_config.pad_token_id = tokenizer.eos_token_id
+        assistant.generation_config.pad_token_id = tokenizer.eos_token_id
 
         text = "Hello world"
         tokenized_inputs = tokenizer([text], return_tensors="pt")
@@ -2937,7 +2937,7 @@ class GenerationIntegrationTests(unittest.TestCase, GenerationIntegrationTestsMi
         # PT-only test: TF doesn't support assisted decoding yet.
         model = AutoModelForCausalLM.from_pretrained("hf-internal-testing/tiny-random-gpt2").to(torch_device)
         tokenizer = AutoTokenizer.from_pretrained("hf-internal-testing/tiny-random-gpt2")
-        model.config.pad_token_id = tokenizer.eos_token_id
+        model.generation_config.pad_token_id = tokenizer.eos_token_id
 
         text = "Hello world"
         tokenized_inputs = tokenizer([text], return_tensors="pt")
