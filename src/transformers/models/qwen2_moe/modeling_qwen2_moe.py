@@ -433,7 +433,7 @@ class Qwen2MoeAttention(nn.Module):
 
 
 # copied from transformers.models.qwen2.modeling_qwen2.Qwen2FlashAttention2 with Qwen2->Qwen2Moe
-# TODO bring back copied after compile compatibility
+# TODO (Raushan): bring back copied after compile compatibility
 class Qwen2MoeFlashAttention2(Qwen2MoeAttention):
     """
     Qwen2Moe flash attention module, following Qwen2Moe attention module. This module inherits from `Qwen2MoeAttention`
