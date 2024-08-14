@@ -848,7 +848,7 @@ MIXTRAL_START_DOCSTRING = r"""
     MIXTRAL_START_DOCSTRING,
 )
 # copied from transformers.models.qwen2.modeling_qwen2.Qwen2PreTrainedModel with Qwen2->Mixtral
-# TODO bring bacj copied after compile compatibilty
+# TODO (Raushan): bring back copied after compile compatibility
 class MixtralPreTrainedModel(PreTrainedModel):
     config_class = MixtralConfig
     base_model_prefix = "model"
