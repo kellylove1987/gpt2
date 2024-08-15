@@ -1821,10 +1821,6 @@ class SuppressTokensAtBeginLogitsProcessor(SuppressTokensInIndexRangeLogitsProce
         # Keeping this here for backwards compatibility
         self.begin_index = begin_index
 
-    @add_start_docstrings(LOGITS_PROCESSOR_INPUTS_DOCSTRING)
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-        return super().__call__(input_ids, scores)
-
 
 class SuppressTokensLogitsProcessor(SuppressTokensInIndexRangeLogitsProcessor):
     r"""
@@ -1857,10 +1853,6 @@ class SuppressTokensLogitsProcessor(SuppressTokensInIndexRangeLogitsProcessor):
 
     def __init__(self, suppress_tokens, device: str = "cpu"):
         super().__init__(suppress_tokens, 0, device=device)
-
-    @add_start_docstrings(LOGITS_PROCESSOR_INPUTS_DOCSTRING)
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
-        return super().__call__(input_ids, scores)
 
 
 class ForceTokensLogitsProcessor(LogitsProcessor):

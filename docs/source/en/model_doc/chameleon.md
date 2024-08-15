@@ -214,8 +214,6 @@ inputs = processor(
 generate_ids = model.generate(
     **inputs,
     multimodal_generation_mode="image-only",
-    # Note: We need to set `max_new_tokens` to 1026 since the model generates the `image_start_token` marker token first, then 1024 image tokens, and finally the `image_end_token` marker token.
-    max_new_tokens=1026,
     # This is important because most of the image tokens during training were for "empty" patches, so greedy decoding of image tokens will likely result in a blank image.
     do_sample=True,
 )
