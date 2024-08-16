@@ -357,6 +357,7 @@ class Qwen2MoeAttention(nn.Module):
             base=self.rope_theta,
         )
 
+    # Ignore copy
     def forward(
         self,
         hidden_states: torch.Tensor,
@@ -431,7 +432,8 @@ class Qwen2MoeAttention(nn.Module):
         return attn_output, attn_weights, past_key_value
 
 
-# Copied from transformers.models.qwen2.modeling_qwen2.Qwen2FlashAttention2 with Qwen2->Qwen2Moe
+# copied from transformers.models.qwen2.modeling_qwen2.Qwen2FlashAttention2 with Qwen2->Qwen2Moe
+# TODO (Raushan): bring back copied after compile compatibility
 class Qwen2MoeFlashAttention2(Qwen2MoeAttention):
     """
     Qwen2Moe flash attention module, following Qwen2Moe attention module. This module inherits from `Qwen2MoeAttention`
