@@ -2554,6 +2554,8 @@ else:
     )
     _import_structure["models.m2m_100"].extend(
         [
+            "M2M100DecoderModel",
+            "M2M100EncoderModel",
             "M2M100ForConditionalGeneration",
             "M2M100Model",
             "M2M100PreTrainedModel",
@@ -7081,6 +7083,8 @@ if TYPE_CHECKING:
             LxmertXLayer,
         )
         from .models.m2m_100 import (
+            M2M100DecoderModel,
+            M2M100EncoderModel,
             M2M100ForConditionalGeneration,
             M2M100Model,
             M2M100PreTrainedModel,
