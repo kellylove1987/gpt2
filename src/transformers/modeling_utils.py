@@ -3209,6 +3209,8 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
         adapter_kwargs = kwargs.pop("adapter_kwargs", {})
         adapter_name = kwargs.pop("adapter_name", "default")
         use_flash_attention_2 = kwargs.pop("use_flash_attention_2", False)
+        use_tensor_parallel = kwargs.pop("tensor_parallel", False)
+        tensor_parallel_size = kwargs.pop("tensor_parallel_size", 2)
 
         gguf_file = kwargs.pop("gguf_file", None)
         # Cache path to the GGUF file
@@ -3976,6 +3978,10 @@ class PreTrainedModel(nn.Module, ModuleUtilsMixin, GenerationMixin, PushToHubMix
                 keep_in_fp32_modules=keep_in_fp32_modules,
                 gguf_path=gguf_path,
             )
+        
+        # FIXME : I am not sure it's a right place for Tensor Parallel but for sure it's after model creation
+        if use_tensor_parallel:
+            model.apply_tensor_parallel(tensor_parallel_size = tensor_parallel_size)
 
         # make sure token embedding weights are still tied if needed
         model.tie_weights()
