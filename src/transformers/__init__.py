@@ -460,6 +460,7 @@ _import_structure = {
     "models.gpt_neox_japanese": ["GPTNeoXJapaneseConfig"],
     "models.gpt_sw3": [],
     "models.gptj": ["GPTJConfig"],
+    "models.granite": ["GraniteConfig"],
     "models.grounding_dino": [
         "GroundingDinoConfig",
         "GroundingDinoProcessor",
@@ -2309,6 +2310,16 @@ else:
             "GPTJForSequenceClassification",
             "GPTJModel",
             "GPTJPreTrainedModel",
+        ]
+    )
+    _import_structure["models.granite"].extend(
+        [
+            "GraniteForCausalLM",
+            "GraniteForQuestionAnswering",
+            "GraniteForSequenceClassification",
+            "GraniteForTokenClassification",
+            "GraniteModel",
+            "GranitePreTrainedModel",
         ]
     )
     _import_structure["models.grounding_dino"].extend(
@@ -5184,6 +5195,7 @@ if TYPE_CHECKING:
         GPTNeoXJapaneseConfig,
     )
     from .models.gptj import GPTJConfig
+    from .models.granite import GraniteConfig
     from .models.grounding_dino import (
         GroundingDinoConfig,
         GroundingDinoProcessor,
@@ -6894,6 +6906,14 @@ if TYPE_CHECKING:
             GPTJForSequenceClassification,
             GPTJModel,
             GPTJPreTrainedModel,
+        )
+        from .models.granite import (
+            GraniteForCausalLM,
+            GraniteForQuestionAnswering,
+            GraniteForSequenceClassification,
+            GraniteForTokenClassification,
+            GraniteModel,
+            GranitePreTrainedModel,
         )
         from .models.grounding_dino import (
             GroundingDinoForObjectDetection,
