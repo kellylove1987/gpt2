@@ -1025,6 +1025,10 @@ class StaticCache(Cache):
 
         self.batch_size = batch_size or max_batch_size
         self.max_cache_len = config.max_position_embeddings if max_cache_len is None else max_cache_len
+
+        if hasattr(config, "text_config"):  # in case of composite models
+            config = config.text_config
+
         # Some model define a custom `head_dim` != config.hidden_size // config.num_attention_heads
         self.head_dim = (
             config.head_dim if hasattr(config, "head_dim") else config.hidden_size // config.num_attention_heads
