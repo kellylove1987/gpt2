@@ -475,6 +475,14 @@ _import_structure = {
     "models.ibert": ["IBertConfig"],
     "models.idefics": ["IdeficsConfig"],
     "models.idefics2": ["Idefics2Config"],
+    "models.imagebind": [
+        "ImageBindAudioConfig",
+        "ImageBindConfig",
+        "ImageBindFeatureExtractor",
+        "ImageBindProcessor",
+        "ImageBindTextConfig",
+        "ImageBindVisionConfig",
+    ],
     "models.imagegpt": ["ImageGPTConfig"],
     "models.informer": ["InformerConfig"],
     "models.instructblip": [
@@ -1168,6 +1176,7 @@ else:
     _import_structure["models.grounding_dino"].extend(["GroundingDinoImageProcessor"])
     _import_structure["models.idefics"].extend(["IdeficsImageProcessor"])
     _import_structure["models.idefics2"].extend(["Idefics2ImageProcessor"])
+    _import_structure["models.imagebind"].extend(["ImageBindImageProcessor"])
     _import_structure["models.imagegpt"].extend(["ImageGPTFeatureExtractor", "ImageGPTImageProcessor"])
     _import_structure["models.instructblipvideo"].extend(["InstructBlipVideoImageProcessor"])
     _import_structure["models.layoutlmv2"].extend(["LayoutLMv2FeatureExtractor", "LayoutLMv2ImageProcessor"])
@@ -2368,6 +2377,18 @@ else:
             "Idefics2Model",
             "Idefics2PreTrainedModel",
             "Idefics2Processor",
+        ]
+    )
+    _import_structure["models.imagebind"].extend(
+        [
+            "ImageBindAudioModel",
+            "ImageBindAudioModelWithProjection",
+            "ImageBindModel",
+            "ImageBindPreTrainedModel",
+            "ImageBindTextModel",
+            "ImageBindTextModelWithProjection",
+            "ImageBindVisionModel",
+            "ImageBindVisionModelWithProjection",
         ]
     )
     _import_structure["models.imagegpt"].extend(
@@ -5201,6 +5222,14 @@ if TYPE_CHECKING:
         IdeficsConfig,
     )
     from .models.idefics2 import Idefics2Config
+    from .models.imagebind import (
+        ImageBindAudioConfig,
+        ImageBindConfig,
+        ImageBindFeatureExtractor,
+        ImageBindProcessor,
+        ImageBindTextConfig,
+        ImageBindVisionConfig,
+    )
     from .models.imagegpt import ImageGPTConfig
     from .models.informer import InformerConfig
     from .models.instructblip import (
@@ -5923,6 +5952,7 @@ if TYPE_CHECKING:
         from .models.grounding_dino import GroundingDinoImageProcessor
         from .models.idefics import IdeficsImageProcessor
         from .models.idefics2 import Idefics2ImageProcessor
+        from .models.imagebind import ImageBindImageProcessor
         from .models.imagegpt import ImageGPTFeatureExtractor, ImageGPTImageProcessor
         from .models.instructblipvideo import InstructBlipVideoImageProcessor
         from .models.layoutlmv2 import (
@@ -6939,6 +6969,16 @@ if TYPE_CHECKING:
             Idefics2Model,
             Idefics2PreTrainedModel,
             Idefics2Processor,
+        )
+        from .models.imagebind import (
+            ImageBindAudioModel,
+            ImageBindAudioModelWithProjection,
+            ImageBindModel,
+            ImageBindPreTrainedModel,
+            ImageBindTextModel,
+            ImageBindTextModelWithProjection,
+            ImageBindVisionModel,
+            ImageBindVisionModelWithProjection,
         )
         from .models.imagegpt import (
             ImageGPTForCausalImageModeling,
