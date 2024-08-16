@@ -151,6 +151,8 @@ class ImagesKwargs(TypedDict, total=False):
             Standard deviation to use if normalizing the image.
         do_pad (`bool`, *optional*):
             Whether to pad the image to the `(max_height, max_width)` of the images in the batch.
+        pad_size (`Dict[str, int]`, *optional*):
+            The size `{"height": int, "width" int}` to pad the images to.
         do_center_crop (`bool`, *optional*):
             Whether to center crop the image.
         data_format (`ChannelDimension` or `str`, *optional*):
@@ -170,6 +172,7 @@ class ImagesKwargs(TypedDict, total=False):
     image_mean: Optional[Union[float, List[float]]]
     image_std: Optional[Union[float, List[float]]]
     do_pad: Optional[bool]
+    pad_size: Optional[Dict[str, int]]
     do_center_crop: Optional[bool]
     data_format: Optional[ChannelDimension]
     input_data_format: Optional[Union[str, ChannelDimension]]
@@ -787,6 +790,8 @@ class ProcessorMixin(PushToHubMixin):
             "common_kwargs": {},
         }
 
+        used_keys = set()
+
         # get defaults from set model processor kwargs if they exist
         for modality in default_kwargs:
             default_kwargs[modality] = ModelProcessorKwargs._defaults.get(modality, {}).copy()
@@ -809,21 +814,33 @@ class ProcessorMixin(PushToHubMixin):
                     # check if this key was passed as a flat kwarg.
                     if kwarg_value != "__empty__" and modality_key in non_modality_kwargs:
                         raise ValueError(
-                            f"Keyword argument {modality_key} was passed two times: in a dictionary for {modality} and as a **kwarg."
+                            f"Keyword argument {modality_key} was passed two times:\n"
+                            f"in a dictionary for {modality} and as a **kwarg."
                         )
                 elif modality_key in kwargs:
-                    kwarg_value = kwargs.pop(modality_key, "__empty__")
+                    # we get a modality_key instead of popping it because modality-specific processors
+                    # can have overlapping kwargs
+                    kwarg_value = kwargs.get(modality_key, "__empty__")
                 else:
                     kwarg_value = "__empty__"
                 if kwarg_value != "__empty__":
                     output_kwargs[modality][modality_key] = kwarg_value
-        # if something remains in kwargs, it belongs to common after flattening
-        if set(kwargs) & set(default_kwargs):
-            # here kwargs is dictionary-based since it shares keys with default set
-            [output_kwargs["common_kwargs"].update(subdict) for _, subdict in kwargs.items()]
+                    used_keys.add(modality_key)
+
+        # Determine if kwargs is a flat dictionary or contains nested dictionaries
+        if any(key in default_kwargs for key in kwargs):
+            # kwargs is dictionary-based, and some keys match modality names
+            for modality, subdict in kwargs.items():
+                if modality in default_kwargs:
+                    for subkey, subvalue in subdict.items():
+                        if subkey not in used_keys:
+                            output_kwargs[modality][subkey] = subvalue
+                            used_keys.add(subkey)
         else:
-            # here it's a flat dict
-            output_kwargs["common_kwargs"].update(kwargs)
+            # kwargs is a flat dictionary
+            for key in kwargs:
+                if key not in used_keys:
+                    output_kwargs["common_kwargs"][key] = kwargs[key]
 
         # all modality-specific kwargs are updated with common kwargs
         for modality in output_kwargs:
