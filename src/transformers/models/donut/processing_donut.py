@@ -16,11 +16,16 @@
 Processor class for Donut.
 """
 
+import logging
 import re
 import warnings
 from contextlib import contextmanager
 
 from ...processing_utils import ProcessorMixin
+from ...utils.deprecation import deprecate_kwarg
+
+
+logger = logging.getLogger(__name__)
 
 
 class DonutProcessor(ProcessorMixin):
@@ -63,6 +68,7 @@ class DonutProcessor(ProcessorMixin):
         self.current_processor = self.image_processor
         self._in_target_context_manager = False
 
+    @deprecate_kwarg(old_name="legacy", version="5.0.0")
     def __call__(self, *args, **kwargs):
         """
         When used in normal mode, this method forwards all its arguments to AutoImageProcessor's
@@ -71,6 +77,14 @@ class DonutProcessor(ProcessorMixin):
         [`~DonutTokenizer.__call__`]. Please refer to the doctsring of the above two methods for more information.
         """
         # For backward compatibility
+        legacy = kwargs.pop("legacy", True)
+        if legacy:
+            logger.warning(
+                "Legacy behavior is being used. The new behavior with legacy=False will be enabled in the future."
+                "If both images and text are provided, it will change the default value of `add_special_tokens` to `False` when calling the tokenizer, "
+                "if `add_special_tokens` is unset, and the tokenized text will be returned in the `decoder_input_ids` key instead of the `labels` key."
+            )
+
         if self._in_target_context_manager:
             return self.current_processor(*args, **kwargs)
 
@@ -85,7 +99,11 @@ class DonutProcessor(ProcessorMixin):
 
         if images is not None:
             inputs = self.image_processor(images, *args, **kwargs)
-        if text is not None:
+        if text is not None and images is None:
+            encodings = self.tokenizer(text, **kwargs)
+        elif text is not None:
+            if not legacy:
+                kwargs.setdefault("add_special_tokens", False)
             encodings = self.tokenizer(text, **kwargs)
 
         if text is None:
@@ -93,7 +111,10 @@ class DonutProcessor(ProcessorMixin):
         elif images is None:
             return encodings
         else:
-            inputs["labels"] = encodings["input_ids"]
+            if legacy:
+                inputs["labels"] = encodings["input_ids"]
+            else:
+                inputs["decoder_input_ids"] = encodings["input_ids"]
             return inputs
 
     def batch_decode(self, *args, **kwargs):
@@ -179,6 +200,20 @@ class DonutProcessor(ProcessorMixin):
             return [output] if is_inner_value else output
         else:
             return [] if is_inner_value else {"text_sequence": tokens}
+
+    def post_process_image_text_to_text(self, generated_outputs):
+        """
+        Post-process the output of the model to decode the text.
+
+        Args:
+            generated_outputs (`torch.Tensor` or `np.ndarray`):
+                The output of the model `generate` function. The output is expected to be a tensor of shape `(batch_size, sequence_length)`
+                or `(sequence_length,)`.
+
+        Returns:
+            `List[str]`: The decoded text.
+        """
+        return self.tokenizer.batch_decode(generated_outputs, skip_special_tokens=True)
 
     @property
     def feature_extractor_class(self):

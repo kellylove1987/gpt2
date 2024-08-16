@@ -16,8 +16,14 @@
 Image/Text processor class for GIT
 """
 
+import logging
+
 from ...processing_utils import ProcessorMixin
 from ...tokenization_utils_base import BatchEncoding
+from ...utils.deprecation import deprecate_kwarg
+
+
+logger = logging.getLogger(__name__)
 
 
 class GitProcessor(ProcessorMixin):
@@ -42,6 +48,7 @@ class GitProcessor(ProcessorMixin):
         super().__init__(image_processor, tokenizer)
         self.current_processor = self.image_processor
 
+    @deprecate_kwarg(old_name="legacy", version="5.0.0")
     def __call__(self, text=None, images=None, return_tensors=None, **kwargs):
         """
         Main method to prepare for the model one or several sequences(s) and image(s). This method forwards the `text`
@@ -76,6 +83,13 @@ class GitProcessor(ProcessorMixin):
               `None`).
             - **pixel_values** -- Pixel values to be fed to a model. Returned when `images` is not `None`.
         """
+        legacy = kwargs.pop("legacy", True)
+        if legacy:
+            logger.warning(
+                "Legacy behavior is being used. The new behavior with legacy=False will be enabled in the future."
+                "If both images and text are provided, it will remove the last token (EOS token) of the input_ids and attention_mask tensors."
+            )
+
         tokenizer_kwargs, image_processor_kwargs = {}, {}
         if kwargs:
             tokenizer_kwargs = {k: v for k, v in kwargs.items() if k not in self.image_processor._valid_processor_keys}
@@ -94,6 +108,9 @@ class GitProcessor(ProcessorMixin):
 
         if text is not None and images is not None:
             encoding["pixel_values"] = image_features.pixel_values
+            if not legacy:
+                encoding["input_ids"] = encoding["input_ids"][:, :-1]
+                encoding["attention_mask"] = encoding["attention_mask"][:, :-1]
             return encoding
         elif text is not None:
             return encoding
@@ -113,6 +130,20 @@ class GitProcessor(ProcessorMixin):
         the docstring of this method for more information.
         """
         return self.tokenizer.decode(*args, **kwargs)
+
+    def post_process_image_text_to_text(self, generated_outputs):
+        """
+        Post-process the output of the model to decode the text.
+
+        Args:
+            generated_outputs (`torch.Tensor` or `np.ndarray`):
+                The output of the model `generate` function. The output is expected to be a tensor of shape `(batch_size, sequence_length)`
+                or `(sequence_length,)`.
+
+        Returns:
+            `List[str]`: The decoded text.
+        """
+        return self.tokenizer.batch_decode(generated_outputs, skip_special_tokens=True)
 
     @property
     def model_input_names(self):
