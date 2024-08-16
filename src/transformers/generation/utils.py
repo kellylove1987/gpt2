@@ -734,61 +734,6 @@ class GenerationMixin:
             )
         return candidate_generator
 
-    def _get_logits_warper(
-        self,
-        generation_config: GenerationConfig,
-        device: str,
-    ) -> LogitsProcessorList:
-        """
-        This class returns a [`LogitsProcessorList`] list object that contains all relevant [`LogitsWarper`] instances
-        used for multinomial sampling.
-        """
-
-        # instantiate warpers list
-        warpers = LogitsProcessorList()
-
-        # In beam methods, we need to keep at least one non-eos token to explore continuations that might have a
-        # better score (i.e. keep len(list(generation_config._eos_token_tensor)) + 1)
-        if generation_config.num_beams > 1:
-            if isinstance(generation_config._eos_token_tensor, list):
-                min_tokens_to_keep = len(generation_config._eos_token_tensor) + 1
-            elif isinstance(generation_config._eos_token_tensor, torch.Tensor):
-                min_tokens_to_keep = generation_config._eos_token_tensor.shape[0] + 1
-            else:
-                min_tokens_to_keep = 2
-        else:
-            min_tokens_to_keep = 1
-
-        # the following idea is largely copied from this PR: https://github.com/huggingface/transformers/pull/5420/files
-        # all samplers can be found in `generation_utils_samplers.py`
-        if generation_config.temperature is not None and generation_config.temperature != 1.0:
-            warpers.append(TemperatureLogitsWarper(generation_config.temperature))
-        if generation_config.top_k is not None and generation_config.top_k != 0:
-            warpers.append(TopKLogitsWarper(top_k=generation_config.top_k, min_tokens_to_keep=min_tokens_to_keep))
-        if generation_config.top_p is not None and generation_config.top_p < 1.0:
-            warpers.append(TopPLogitsWarper(top_p=generation_config.top_p, min_tokens_to_keep=min_tokens_to_keep))
-        if generation_config.min_p is not None:
-            # Applied after temperature scaling (see https://github.com/ggerganov/llama.cpp/pull/3841#issuecomment-2073826084)
-            warpers.append(MinPLogitsWarper(min_p=generation_config.min_p, min_tokens_to_keep=min_tokens_to_keep))
-        if generation_config.typical_p is not None and generation_config.typical_p < 1.0:
-            warpers.append(
-                TypicalLogitsWarper(mass=generation_config.typical_p, min_tokens_to_keep=min_tokens_to_keep)
-            )
-        if generation_config.epsilon_cutoff is not None and 0.0 < generation_config.epsilon_cutoff < 1.0:
-            warpers.append(
-                EpsilonLogitsWarper(epsilon=generation_config.epsilon_cutoff, min_tokens_to_keep=min_tokens_to_keep)
-            )
-        if generation_config.eta_cutoff is not None and 0.0 < generation_config.eta_cutoff < 1.0:
-            warpers.append(
-                EtaLogitsWarper(
-                    epsilon=generation_config.eta_cutoff, min_tokens_to_keep=min_tokens_to_keep, device=device
-                )
-            )
-        # `LogitNormalization` should always be the last logit processor, when present
-        if generation_config.renormalize_logits is True:
-            warpers.append(LogitNormalization())
-        return warpers
-
     def _get_logits_processor(
         self,
         generation_config: GenerationConfig,
@@ -955,7 +900,58 @@ class GenerationMixin:
                     context_width=generation_config.watermarking_config.context_width,
                 )
             )
+
+        # TODO (joao): find a strategy to specify the order of the processors
         processors = self._merge_criteria_processor_list(processors, logits_processor)
+
+        # Processors previously known as `LogitsWarpers`, only applied with sampling strategies
+        if generation_config.do_sample:
+            # In beam methods, we need to keep at least one non-eos token to explore continuations that might have a
+            # better score (i.e. keep len(list(generation_config._eos_token_tensor)) + 1)
+            if generation_config.num_beams > 1:
+                if isinstance(generation_config._eos_token_tensor, list):
+                    min_tokens_to_keep = len(generation_config._eos_token_tensor) + 1
+                elif isinstance(generation_config._eos_token_tensor, torch.Tensor):
+                    min_tokens_to_keep = generation_config._eos_token_tensor.shape[0] + 1
+                else:
+                    min_tokens_to_keep = 2
+            else:
+                min_tokens_to_keep = 1
+
+            # the following idea is largely copied from this PR: https://github.com/huggingface/transformers/pull/5420/files
+            # all samplers can be found in `generation_utils_samplers.py`
+            if generation_config.temperature is not None and generation_config.temperature != 1.0:
+                processors.append(TemperatureLogitsWarper(generation_config.temperature))
+            if generation_config.top_k is not None and generation_config.top_k != 0:
+                processors.append(
+                    TopKLogitsWarper(top_k=generation_config.top_k, min_tokens_to_keep=min_tokens_to_keep)
+                )
+            if generation_config.top_p is not None and generation_config.top_p < 1.0:
+                processors.append(
+                    TopPLogitsWarper(top_p=generation_config.top_p, min_tokens_to_keep=min_tokens_to_keep)
+                )
+            if generation_config.min_p is not None:
+                # Applied after temperature scaling (see https://github.com/ggerganov/llama.cpp/pull/3841#issuecomment-2073826084)
+                processors.append(
+                    MinPLogitsWarper(min_p=generation_config.min_p, min_tokens_to_keep=min_tokens_to_keep)
+                )
+            if generation_config.typical_p is not None and generation_config.typical_p < 1.0:
+                processors.append(
+                    TypicalLogitsWarper(mass=generation_config.typical_p, min_tokens_to_keep=min_tokens_to_keep)
+                )
+            if generation_config.epsilon_cutoff is not None and 0.0 < generation_config.epsilon_cutoff < 1.0:
+                processors.append(
+                    EpsilonLogitsWarper(
+                        epsilon=generation_config.epsilon_cutoff, min_tokens_to_keep=min_tokens_to_keep
+                    )
+                )
+            if generation_config.eta_cutoff is not None and 0.0 < generation_config.eta_cutoff < 1.0:
+                processors.append(
+                    EtaLogitsWarper(
+                        epsilon=generation_config.eta_cutoff, min_tokens_to_keep=min_tokens_to_keep, device=device
+                    )
+                )
+
         # `LogitNormalization` should always be the last logit processor, when present
         if generation_config.renormalize_logits is True:
             processors.append(LogitNormalization())
@@ -1424,7 +1420,7 @@ class GenerationMixin:
         return model_kwargs
 
     def _get_cache(
-        self, cache_implementation: str, max_batch_size: int, max_cache_len: int, device: torch.device, model_kwargs
+        self, cache_implementation: str, batch_size: int, max_cache_len: int, device: torch.device, model_kwargs
     ) -> Cache:
         """
         Sets a cache for `generate`, that will persist across calls. A new cache will only be initialized a
@@ -1446,7 +1442,7 @@ class GenerationMixin:
         need_new_cache = (
             not hasattr(self, "_cache")
             or (not isinstance(cache_to_check, cache_cls))
-            or cache_to_check.max_batch_size != max_batch_size
+            or cache_to_check.batch_size != batch_size
         )
         if cache_implementation != "mamba":
             need_new_cache = need_new_cache or cache_to_check.max_cache_len < max_cache_len
@@ -1471,7 +1467,7 @@ class GenerationMixin:
 
             cache_kwargs = {
                 "config": self.config,
-                "max_batch_size": max_batch_size,
+                "batch_size": batch_size,
                 "max_cache_len": max_cache_len,
                 "device": device,
                 "dtype": cache_dtype,
@@ -1810,7 +1806,7 @@ class GenerationMixin:
                     )
                 model_kwargs[cache_name] = self._get_cache(
                     cache_implementation=generation_config.cache_implementation,
-                    max_batch_size=generation_config.num_beams * generation_config.num_return_sequences * batch_size,
+                    batch_size=generation_config.num_beams * generation_config.num_return_sequences * batch_size,
                     max_cache_len=generation_config.max_length,
                     device=device,
                     model_kwargs=model_kwargs,
@@ -1934,22 +1930,11 @@ class GenerationMixin:
                 model_kwargs=model_kwargs,
             )
 
-            # 12. prepare logits warper (if `do_sample` is `True`)
-            prepared_logits_warper = (
-                self._get_logits_warper(
-                    generation_config,
-                    device=input_ids.device,
-                )
-                if generation_config.do_sample
-                else None
-            )
-
-            # 13. run assisted generate
+            # 12. run assisted generate
             result = self._assisted_decoding(
                 input_ids,
                 candidate_generator=candidate_generator,
                 logits_processor=prepared_logits_processor,
-                logits_warper=prepared_logits_warper,
                 stopping_criteria=prepared_stopping_criteria,
                 generation_config=generation_config,
                 synced_gpus=synced_gpus,
@@ -1962,16 +1947,10 @@ class GenerationMixin:
                 raise ValueError(
                     f"dola decoding is not supported with stateful models, such as {self.__class__.__name__}"
                 )
-            prepared_logits_warper = (
-                self._get_logits_warper(generation_config, device=input_ids.device)
-                if generation_config.do_sample
-                else None
-            )
             result = self._dola_decoding(
                 input_ids,
                 dola_layers=generation_config.dola_layers,
                 logits_processor=prepared_logits_processor,
-                logits_warper=prepared_logits_warper,
                 stopping_criteria=prepared_stopping_criteria,
                 generation_config=generation_config,
                 synced_gpus=synced_gpus,
@@ -1999,14 +1978,7 @@ class GenerationMixin:
             )
 
         elif generation_mode in (GenerationMode.SAMPLE, GenerationMode.GREEDY_SEARCH):
-            # 11. prepare logits warper
-            prepared_logits_warper = (
-                self._get_logits_warper(generation_config, device=input_ids.device)
-                if generation_config.do_sample
-                else None
-            )
-
-            # 12. expand input_ids with `num_return_sequences` additional sequences per batch
+            # 11. expand input_ids with `num_return_sequences` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids=input_ids,
                 expand_size=generation_config.num_return_sequences,
@@ -2014,11 +1986,10 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-            # 13. run sample (it degenerates to greedy search when `generation_config.do_sample=False`)
+            # 12. run sample (it degenerates to greedy search when `generation_config.do_sample=False`)
             result = self._sample(
                 input_ids,
                 logits_processor=prepared_logits_processor,
-                logits_warper=prepared_logits_warper,
                 stopping_criteria=prepared_stopping_criteria,
                 generation_config=generation_config,
                 synced_gpus=synced_gpus,
@@ -2027,14 +1998,7 @@ class GenerationMixin:
             )
 
         elif generation_mode in (GenerationMode.BEAM_SAMPLE, GenerationMode.BEAM_SEARCH):
-            # 11. prepare logits warper
-            prepared_logits_warper = (
-                self._get_logits_warper(generation_config, device=input_ids.device)
-                if generation_config.do_sample
-                else None
-            )
-
-            # 12. prepare beam search scorer
+            # 11. prepare beam search scorer
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
                 num_beams=generation_config.num_beams,
@@ -2045,7 +2009,7 @@ class GenerationMixin:
                 max_length=generation_config.max_length,
             )
 
-            # 13. interleave input_ids with `num_beams` additional sequences per batch
+            # 12. interleave input_ids with `num_beams` additional sequences per batch
             input_ids, model_kwargs = self._expand_inputs_for_generation(
                 input_ids=input_ids,
                 expand_size=generation_config.num_beams,
@@ -2053,12 +2017,11 @@ class GenerationMixin:
                 **model_kwargs,
             )
 
-            # 14. run beam sample
+            # 13. run beam sample
             result = self._beam_search(
                 input_ids,
                 beam_scorer,
                 logits_processor=prepared_logits_processor,
-                logits_warper=prepared_logits_warper,
                 stopping_criteria=prepared_stopping_criteria,
                 generation_config=generation_config,
                 synced_gpus=synced_gpus,
@@ -2274,7 +2237,6 @@ class GenerationMixin:
         generation_config: GenerationConfig,
         synced_gpus: bool,
         streamer: "BaseStreamer",
-        logits_warper: Optional[LogitsProcessorList],
         **model_kwargs,
     ) -> Union[GenerateNonBeamOutput, torch.LongTensor]:
         r"""
@@ -2303,10 +2265,6 @@ class GenerationMixin:
             streamer (`BaseStreamer`, *optional*):
                 Streamer object that will be used to stream the generated sequences. Generated tokens are passed
                 through `streamer.put(token_ids)` and the streamer is responsible for any further processing.
-            logits_warper (`LogitsProcessorList`, *optional*):
-                An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsWarper`] used
-                to warp the prediction score distribution of the language modeling head applied before multinomial
-                sampling at each generation step.
             model_kwargs:
                 Additional model specific keyword arguments will be forwarded to the `forward` function of the model.
                 If model is an encoder-decoder model the kwargs should include `encoder_outputs`.
@@ -2331,11 +2289,6 @@ class GenerationMixin:
         return_dict_in_generate = generation_config.return_dict_in_generate
         has_eos_stopping_criteria = any(hasattr(criteria, "eos_token_id") for criteria in stopping_criteria)
         do_sample = generation_config.do_sample
-        if do_sample is True and not isinstance(logits_warper, LogitsProcessorList):
-            raise ValueError(
-                "`do_sample` is set to `True`, `logits_warper` must be a `LogitsProcessorList` instance (it is "
-                f"{logits_warper})."
-            )
 
         # init attention / hidden states / scores tuples
         scores = () if (return_dict_in_generate and output_scores) else None
@@ -2423,8 +2376,7 @@ class GenerationMixin:
             )
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
-            if do_sample:  # sample
-                next_token_scores = logits_warper(input_ids, next_token_scores)
+
             # Store scores, attentions and hidden_states when required
             if return_dict_in_generate:
                 if output_scores:
@@ -2880,7 +2832,6 @@ class GenerationMixin:
         generation_config: GenerationConfig,
         synced_gpus: bool,
         streamer: Optional["BaseStreamer"],
-        logits_warper: Optional[LogitsProcessorList],
         **model_kwargs,
     ) -> Union[GenerateNonBeamOutput, torch.LongTensor]:
         r"""
@@ -2903,11 +2854,6 @@ class GenerationMixin:
             streamer (`BaseStreamer`, *optional*):
                 Streamer object that will be used to stream the generated sequences. Generated tokens are passed
                 through `streamer.put(token_ids)` and the streamer is responsible for any further processing.
-            logits_warper (`LogitsProcessorList`, *optional*):
-                An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsWarper`] used
-                to warp the prediction score distribution of the language modeling head applied before multinomial
-                sampling at each generation step. Only required with sampling strategies (i.e. `do_sample` is set in
-                `generation_config`)
             model_kwargs:
                 Additional model specific kwargs will be forwarded to the `forward` function of the model. If model is
                 an encoder-decoder model the kwargs should include `encoder_outputs`.
@@ -2929,11 +2875,6 @@ class GenerationMixin:
         max_length = generation_config.max_length
         has_eos_stopping_criteria = any(hasattr(criteria, "eos_token_id") for criteria in stopping_criteria)
         do_sample = generation_config.do_sample
-        if do_sample is True and not isinstance(logits_warper, LogitsProcessorList):
-            raise ValueError(
-                "`do_sample` is set to `True`, `logits_warper` must be a `LogitsProcessorList` instance (it is "
-                f"{logits_warper})."
-            )
 
         # init attention / hidden states / scores tuples
         scores = () if (return_dict_in_generate and output_scores) else None
@@ -2977,8 +2918,6 @@ class GenerationMixin:
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
-            if do_sample:
-                next_token_scores = logits_warper(input_ids, next_token_scores)
 
             # Store scores, attentions and hidden_states when required
             if return_dict_in_generate:
@@ -3092,7 +3031,6 @@ class GenerationMixin:
         stopping_criteria: StoppingCriteriaList,
         generation_config: GenerationConfig,
         synced_gpus: bool,
-        logits_warper: Optional[LogitsProcessorList],
         **model_kwargs,
     ) -> Union[GenerateBeamOutput, torch.LongTensor]:
         r"""
@@ -3115,11 +3053,6 @@ class GenerationMixin:
                 The generation configuration to be used as parametrization of the decoding method.
             synced_gpus (`bool`):
                 Whether to continue running the while loop until max_length (needed for ZeRO stage 3)
-            logits_warper (`LogitsProcessorList`, *optional*):
-                An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsWarper`] used
-                to warp the prediction score distribution of the language modeling head applied before multinomial
-                sampling at each generation step. Only required with sampling strategies (i.e. `do_sample` is set in
-                `generation_config`)
             model_kwargs:
                 Additional model specific kwargs will be forwarded to the `forward` function of the model. If model is
                 an encoder-decoder model the kwargs should include `encoder_outputs`.
@@ -3141,11 +3074,6 @@ class GenerationMixin:
         return_dict_in_generate = generation_config.return_dict_in_generate
         sequential = generation_config.low_memory
         do_sample = generation_config.do_sample
-        if do_sample is True and not isinstance(logits_warper, LogitsProcessorList):
-            raise ValueError(
-                "`do_sample` is set to `True`, `logits_warper` must be a `LogitsProcessorList` instance (it is "
-                f"{logits_warper})."
-            )
 
         batch_size = len(beam_scorer._beam_hyps)
         num_beams = beam_scorer.num_beams
@@ -3236,8 +3164,6 @@ class GenerationMixin:
             )  # (batch_size * num_beams, vocab_size)
 
             next_token_scores_processed = logits_processor(input_ids, next_token_scores)
-            if do_sample:
-                next_token_scores_processed = logits_warper(input_ids, next_token_scores_processed)
             next_token_scores = next_token_scores_processed + beam_scores[:, None].expand_as(
                 next_token_scores_processed
             )
@@ -3685,10 +3611,6 @@ class GenerationMixin:
             stopping_criteria (`StoppingCriteriaList`):
                 An instance of [`StoppingCriteriaList`]. List of instances of class derived from [`StoppingCriteria`]
                 used to tell if the generation loop should stop.
-            logits_warper (`LogitsProcessorList`):
-                An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsWarper`] used
-                to warp the prediction score distribution of the language modeling head applied before multinomial
-                sampling at each generation step.
             generation_config ([`~generation.GenerationConfig`]):
                 The generation configuration to be used as parametrization of the decoding method.
             synced_gpus (`bool`):
@@ -3902,7 +3824,6 @@ class GenerationMixin:
         input_ids: torch.LongTensor,
         candidate_generator: CandidateGenerator,
         logits_processor: LogitsProcessorList,
-        logits_warper: LogitsProcessorList,
         stopping_criteria: StoppingCriteriaList,
         generation_config: GenerationConfig,
         synced_gpus: bool,
@@ -3924,10 +3845,6 @@ class GenerationMixin:
             logits_processor (`LogitsProcessorList`):
                 An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsProcessor`]
                 used to modify the prediction scores of the language modeling head applied at each generation step.
-            logits_warper (`LogitsProcessorList`):
-                An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsWarper`] used
-                to warp the prediction score distribution of the language modeling head applied before multinomial
-                sampling at each generation step. Only used if sampling is active.
             stopping_criteria (`StoppingCriteriaList`):
                 An instance of [`StoppingCriteriaList`]. List of instances of class derived from [`StoppingCriteria`]
                 used to tell if the generation loop should stop.
@@ -3950,7 +3867,7 @@ class GenerationMixin:
             `model.config.is_encoder_decoder=True`.
         """
         # init values
-        do_sample = logits_warper is not None
+        do_sample = generation_config.do_sample
         output_attentions = generation_config.output_attentions
         output_hidden_states = generation_config.output_hidden_states
         output_scores = generation_config.output_scores
@@ -4034,9 +3951,6 @@ class GenerationMixin:
             if len(logits_processor) > 0:
                 for i in range(candidate_length + 1):
                     new_logits[:, i, :] = logits_processor(candidate_input_ids[:, : cur_len + i], new_logits[:, i, :])
-            if do_sample and len(logits_warper) > 0:
-                for i in range(candidate_length + 1):
-                    new_logits[:, i, :] = logits_warper(candidate_input_ids[:, : cur_len + i], new_logits[:, i, :])
 
             # 3. Select the accepted tokens. There are two possible cases:
             # Case 1: `do_sample=True` and we have logits for the candidates (originally from speculative decoding)

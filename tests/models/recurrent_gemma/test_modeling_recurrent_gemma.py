@@ -413,7 +413,7 @@ class RecurrentGemmaModelTest(ModelTesterMixin, GenerationTesterMixin, PipelineT
     def test_initialization(self):
         pass
 
-    @unittest.skip(reason="TODO @gante not super important and failing.")
+    @unittest.skip(reason="RecurrentGemma does not support generating with input embeddings (missing position_ids)")
     def test_inputs_embeds_matches_input_ids_with_generate(self):
         pass
 
