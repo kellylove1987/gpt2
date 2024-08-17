@@ -1056,6 +1056,7 @@ else:
     _import_structure["models.llama"].append("LlamaTokenizerFast")
     _import_structure["models.longformer"].append("LongformerTokenizerFast")
     _import_structure["models.lxmert"].append("LxmertTokenizerFast")
+    _import_structure["models.mamba2"].append("Mamba2TokenizerFast")
     _import_structure["models.markuplm"].append("MarkupLMTokenizerFast")
     _import_structure["models.mbart"].append("MBartTokenizerFast")
     _import_structure["models.mbart50"].append("MBart50TokenizerFast")
@@ -5822,6 +5823,7 @@ if TYPE_CHECKING:
         from .models.llama import LlamaTokenizerFast
         from .models.longformer import LongformerTokenizerFast
         from .models.lxmert import LxmertTokenizerFast
+        from .models.mamba2 import Mamba2TokenizerFast
         from .models.markuplm import MarkupLMTokenizerFast
         from .models.mbart import MBartTokenizerFast
         from .models.mbart50 import MBart50TokenizerFast
